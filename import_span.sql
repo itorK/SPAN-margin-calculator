@@ -61,7 +61,6 @@ select  extractvalue(col1,'count(//ccDef)') INTO v_ilosc_klas FROM b;
 								  extractvalue(col1,CONCAT('//ccDef[',v_i,']//intraTiers//tier[',v_lpz,']//ePe')),
 								  extractvalue(col1,CONCAT('//ccDef[',v_i,']//intraTiers//tier[',v_lpz,']//tn'))
 						   INTO v_pocz,v_kon,v_poziom_klasy FROM b; 
-						   insert into log(log_tekst) values (CONCAT(v_klasa,':',v_i,':',v_lpz,':',v_pocz,'->',v_typ_spreadu,':',v_poziom_klasy));
 						   UPDATE span_papiery SET sppa_nr_poziomu=v_poziom_klasy WHERE STR_TO_DATE(sppa_data_wygas,'%Y%m') BETWEEN
 						   STR_TO_DATE(v_pocz,'%Y%m') AND STR_TO_DATE(v_kon,'%Y%m') AND sppa_klas_id=v_klas_id;
 						   ITERATE l_poziomy;

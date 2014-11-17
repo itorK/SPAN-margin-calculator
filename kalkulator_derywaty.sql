@@ -133,10 +133,6 @@ REPEAT
 					SET v_prior_typ = 'U';
 				END IF;
 			END IF;
-			/*IF v_tkwew_strona_wartosc < 0 THEN
-			 SET v_tkwew_strona_wartosc = 0;
-			 SET v_prior_typ = 'N';
-			END IF;*/
 			INSERT INTO priorytety(prior_strona,prior_delta,prior_typ,prior_nr,prior_poprz_poziom) values (v_strona,v_tkwew_strona_wartosc,v_prior_typ, v_priorytet,v_nr_poziomu )
 			ON DUPLICATE KEY UPDATE prior_delta =v_tkwew_strona_wartosc,prior_strona=v_strona,prior_nr=v_priorytet,prior_typ=v_prior_typ,prior_poprz_poziom = v_nr_poziomu;
 		  ELSEIF (v_prior_strona <> v_strona) THEN
@@ -231,13 +227,7 @@ SET v_done = 0;
 					SET v_done = 0;
 					INSERT IGNORE INTO priorytety (prior_nr,prior_delta,prior_depozyt,prior_klas_id,prior_klas_id_2) values
 										   (v_priorytet,IFNULL(v_dd_2,0),0,v_klas_id_2,v_klas_id);
-					END IF;
-        			/*IF LAST_INSERT_ID() = 0 THEN
-						SET v_dd_2 = 0;
-						SET v_du_2 = 0;
-						
-						ITERATE l_spready;
-					END IF;*/            
+					END IF;         
 				END IF;
 				call prRyzykoKlasy(v_kod_klasy,@p1);
 				
@@ -282,25 +272,6 @@ SET v_done = 0;
 				ELSE
 					SET v_delta_1 = v_du/v_liczba_delt;
 				END IF;
-				/*
-				IF v_dd > 0 AND v_du_2 > 0 THEN
-				  IF v_dd < v_du_2 THEN
-					SET v_delta = v_dd/v_liczba_delt;
-				  ELSE
-					SET v_delta = v_du_2/v_liczba_delt_2;
-				  END IF;
-				END IF;
-				*/
-				
-				/*
-				IF v_dd_2 > 0 AND v_du > 0 THEN
-				  IF v_dd_2 < v_du THEN
-					SET v_delta_1 = v_dd_2/v_liczba_delt_2;
-				  ELSE
-					SET v_delta_1 = v_du/v_liczba_delt;
-				  END IF;
-				END IF;
-				*/
 				IF v_delta > v_delta_1 THEN
 				  SET v_delta_max = v_delta;
 				ELSE
@@ -343,10 +314,6 @@ SET v_done = 0;
 				IF v_JRZC1 > 0 AND v_JRZC2 > 0 THEN
 				    SET v_delta_max = v_delta_max ;
 					SET p_depozyt = p_depozyt + Round(IFNULL(v_JRZC1*v_delta_max* v_depozyt *v_liczba_delt,0),4) +Round(IFNULL(v_JRZC2*v_delta_max* v_depozyt *v_liczba_delt_2,0),4);
-					/*
-					SELECT * from priorytety;
-					SELECT CONCAT(v_RZC1,':',v_RZC2,':',v_TR2,':',v_JRZC1,':',v_JRZC2,':',v_delta_max,':',v_depozyt,':',v_klas_id_2,':',v_klas_id,':',v_liczba_delt,':',v_liczba_delt_2,':',v_dd_org,':',v_dd_2_org,':',v_priorytet);
-					*/
 					
 					UPDATE priorytety SET prior_delta =prior_delta - IFNULL((CASE SIGN(prior_delta) WHEN -1 THEN -1*v_delta_max*v_liczba_delt ELSE v_delta_max*v_liczba_delt END),0),
 										  prior_depozyt = prior_depozyt + Round(IFNULL(v_JRZC1*v_delta_max* v_depozyt *v_liczba_delt,0),4) WHERE prior_klas_id = v_klas_id /*AND prior_klas_id_2 = v_klas_id_2*/;
@@ -571,7 +538,6 @@ CREATE TEMPORARY TABLE priorytety (
 );
 
 CREATE UNIQUE INDEX idx_priorytet ON priorytety (prior_nr,prior_klas_id,prior_klas_id_2);
-/*CREATE UNIQUE INDEX idx_priorytet ON priorytety (prior_nr);*/
 
 START TRANSACTION;
 INSERT INTO span_obl (sob_klas_id) select klas_id from klasy;
