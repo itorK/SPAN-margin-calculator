@@ -8,15 +8,13 @@ http://www.kdpwccp.pl/pl/zarzadzanie/span/Strony/O-SPAN.aspx
 Algorytm zwraca wartości identyczne z Kalkulatorem KDPW<br>
 http://www.kdpwccp.pl/pl/zarzadzanie/Strony/kalkulator.aspx
 
-Wersja do zopytmalizowania we własnym zakresie, jeśli chcesz by działało to szybciej skontaktuj się z autorem.
-
 Jeśli chciałbyś wersję w PL/SQL, PL/pgSQL, lub w Javie skontaktuj się z autorem :)
 
 Instalacja 
 -----------
 
 1. Należy pobrać i zainstalować bazę danych MariaDB/MySQL
-https://downloads.mariadb.org/ (rekomendowana)
+https://downloads.mariadb.org/ (rekomendowana a najlepiej w wersji większej niż 10.0.8)
 lub
 http://dev.mysql.com/downloads/mysql/
 
@@ -34,9 +32,9 @@ Użycie - Import
 1. Sciągamy plik ze strony KDPW<br>
 http://www.kdpwccp.pl/pl/zarzadzanie/Parametry/SPAN/RPNJI_ZRS.xml
 2. W konsoli MySQL wpisujemy komendę
-``` 
+```
 MariaDB [kalkulator]> INSERT INTO b (col1) VALUES ( LOAD_FILE('RPNJE_ZRS.xml'));
-``` 
+```
 
 3. Następnie
 ``` 
@@ -74,3 +72,4 @@ MariaDB [kalkulator]> select @depozyt,@NOD, @DPNO, @premia, @pno;
 Autor
 -----------
 [Karol Przybylski](http://www.esm-technology.pl) 
+karol.przybylski@esm-technology.pl
