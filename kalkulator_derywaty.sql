@@ -1,6 +1,9 @@
 /* Kalkulator depozytow SPAN
 *  Written by Karol Przybylski 2014-11-10
 *  Visit http://www.esm-technology.pl or http://github.com/itorK
+gain and lossess
+http://www.investopedia.com/ask/answers/04/021204.asp
+http://strategiccfo.com/wikicfo/realized-and-unrealized-gains-and-losses/
 */
 SET GLOBAL log_bin_trust_function_creators = 1;
 
@@ -28,19 +31,23 @@ DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = 1;
 SET p_ryzyko = 0;
 
 SELECT klas_id INTO v_klas_id FROM klasy WHERE klas_nazwa = p_kod_klasy;
-DELETE FROM span_obl_risk WHERE sobr_sob_id = (select sob_id from span_obl where sob_klas_id=v_klas_id);
-OPEN cs_max_scen;
-REPEAT
-       FETCH cs_max_scen INTO v_numer,v_suma;
-       IF NOT v_done AND v_klas_id IS NOT null THEN
-	        INSERT INTO span_obl_risk (sobr_sob_id,sobr_ryzyko,sobr_scen) values ((select sob_id from span_obl where sob_klas_id=v_klas_id),v_suma,v_numer);
-			IF v_suma > v_suma_max THEN
-				UPDATE span_obl SET sob_ryzyko = round(v_suma,0),sob_akt_scen=v_numer WHERE sob_klas_id=v_klas_id ;
-				SET v_suma_max = v_suma;
-			END IF;
-       END IF;
-UNTIL v_done END REPEAT;
-CLOSE cs_max_scen;
+
+SELECT sob_ryzyko INTO v_suma_max FROM span_obl WHERE sob_klas_id=v_klas_id;
+IF v_suma_max = 0 OR v_suma_max IS NULL THEN
+	DELETE FROM span_obl_risk WHERE sobr_sob_id = (select sob_id from span_obl where sob_klas_id=v_klas_id);
+	OPEN cs_max_scen;
+	REPEAT
+		   FETCH cs_max_scen INTO v_numer,v_suma;
+		   IF NOT v_done AND v_klas_id IS NOT null THEN
+				INSERT INTO span_obl_risk (sobr_sob_id,sobr_ryzyko,sobr_scen) values ((select sob_id from span_obl where sob_klas_id=v_klas_id),v_suma,v_numer);
+				IF v_suma > v_suma_max THEN
+					UPDATE span_obl SET sob_ryzyko = round(v_suma,0),sob_akt_scen=v_numer WHERE sob_klas_id=v_klas_id ;
+					SET v_suma_max = v_suma;
+				END IF;
+		   END IF;
+	UNTIL v_done END REPEAT;
+	CLOSE cs_max_scen;
+END IF;
 SET p_ryzyko = v_suma_max;
 end;
 
@@ -208,7 +215,7 @@ SET v_done = 0;
 
 				call prRyzykoKlasy(v_kod_klasy_2,@p1);
 				SET v_delta_max = 0;
-
+				SELECT sum(zlc_ilosc*sppa_wsp_skal_delty*sppa_delta) INTO v_dd_2_org from zlecenia,span_papiery WHERE zlc_sppa_id=sppa_id and sppa_klas_id=v_klas_id_2;
 				SELECT prior_delta,prior_depozyt INTO v_dd_2,v_wylicz_depozyt_2 FROM priorytety WHERE prior_klas_id=v_klas_id_2 AND  prior_nr < v_priorytet ORDER BY prior_nr DESC LIMIT 1;
 				IF FOUND_ROWS() < 1 THEN
 					
@@ -216,7 +223,7 @@ SET v_done = 0;
 					SET v_dd_2 = 0;
 					SET v_du_2 = 0;
 					
-					SELECT sum(zlc_ilosc*sppa_wsp_skal_delty*sppa_delta) INTO v_dd_2 from zlecenia,span_papiery WHERE zlc_sppa_id=sppa_id and sppa_klas_id=v_klas_id_2;
+					SET v_dd_2 = v_dd_2_org;
 					SELECT prior_depozyt INTO v_wylicz_depozyt_2 FROM priorytety WHERE prior_klas_id=v_klas_id_2  AND prior_nr = v_priorytet;
 					IF FOUND_ROWS() > 0 THEN
 						SET v_dd_2 = 0;
@@ -230,11 +237,11 @@ SET v_done = 0;
 					END IF;         
 				END IF;
 				call prRyzykoKlasy(v_kod_klasy,@p1);
-				
+				SELECT sum(zlc_ilosc*sppa_wsp_skal_delty*sppa_delta) INTO v_dd_org from zlecenia,span_papiery WHERE zlc_sppa_id=sppa_id and sppa_klas_id=v_klas_id;
 				SELECT prior_delta,prior_depozyt INTO v_dd,v_wylicz_depozyt FROM priorytety WHERE prior_klas_id=v_klas_id  AND prior_nr < v_priorytet ORDER BY prior_nr DESC LIMIT 1;		
 				IF FOUND_ROWS() < 1 THEN
 					SET v_done = 0;	
-					SELECT sum(zlc_ilosc*sppa_wsp_skal_delty*sppa_delta) INTO v_dd from zlecenia,span_papiery WHERE zlc_sppa_id=sppa_id and sppa_klas_id=v_klas_id;
+					SET v_dd = v_dd_org;
 					
 					SELECT prior_depozyt INTO v_wylicz_depozyt FROM priorytety WHERE prior_klas_id=v_klas_id AND prior_nr = v_priorytet;
 					IF FOUND_ROWS() > 0 THEN
@@ -305,9 +312,6 @@ SET v_done = 0;
 
 				SET v_RZC1 = v_SCRV1 - v_TR1;
 				SET v_RZC2 = v_SCRV2 - v_TR2;
-		       SELECT sum(zlc_ilosc*sppa_wsp_skal_delty*sppa_delta) INTO v_dd_2_org from zlecenia,span_papiery WHERE zlc_sppa_id=sppa_id and sppa_klas_id=v_klas_id_2;
-					
-				SELECT sum(zlc_ilosc*sppa_wsp_skal_delty*sppa_delta) INTO v_dd_org from zlecenia,span_papiery WHERE zlc_sppa_id=sppa_id and sppa_klas_id=v_klas_id;
 				SET v_JRZC1 = v_RZC1/ABS(v_dd_org);
 				SET v_JRZC2 = v_RZC2/ABS(v_dd_2_org);
 
@@ -316,10 +320,10 @@ SET v_done = 0;
 					SET p_depozyt = p_depozyt + Round(IFNULL(v_JRZC1*v_delta_max* v_depozyt *v_liczba_delt,0),4) +Round(IFNULL(v_JRZC2*v_delta_max* v_depozyt *v_liczba_delt_2,0),4);
 					
 					UPDATE priorytety SET prior_delta =prior_delta - IFNULL((CASE SIGN(prior_delta) WHEN -1 THEN -1*v_delta_max*v_liczba_delt ELSE v_delta_max*v_liczba_delt END),0),
-										  prior_depozyt = prior_depozyt + Round(IFNULL(v_JRZC1*v_delta_max* v_depozyt *v_liczba_delt,0),4) WHERE prior_klas_id = v_klas_id /*AND prior_klas_id_2 = v_klas_id_2*/;
+										  prior_depozyt = prior_depozyt + Round(IFNULL(v_JRZC1*v_delta_max* v_depozyt *v_liczba_delt,0),4) WHERE prior_klas_id = v_klas_id;
 
 					UPDATE priorytety SET prior_delta =prior_delta - IFNULL((CASE SIGN(prior_delta) WHEN -1 THEN -1*v_delta_max*v_liczba_delt_2 ELSE v_delta_max*v_liczba_delt_2 END),0),
-										  prior_depozyt= prior_depozyt + Round(IFNULL(v_JRZC2*v_delta_max*v_liczba_delt_2*v_depozyt,0),4) WHERE prior_klas_id = v_klas_id_2 /*AND prior_klas_id_2 = v_klas_id*/;
+										  prior_depozyt= prior_depozyt + Round(IFNULL(v_JRZC2*v_delta_max*v_liczba_delt_2*v_depozyt,0),4) WHERE prior_klas_id = v_klas_id_2;
 				END IF;
 
 		   END IF;

@@ -376,7 +376,6 @@ truncate table spready_nogi;
 truncate table klasy;
 truncate table span_papiery;
 truncate table depozyty_jedn;
-truncate table span_obl;
 truncate table span_obl_risk;
 select fnImportujKontrakty() INTO v_ret;
 select fnImportujOpcje() INTO v_ret;
