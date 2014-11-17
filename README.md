@@ -13,7 +13,7 @@ Jeśli chciałbyś wersję w PL/SQL, PL/pgSQL, lub w Javie skontaktuj się z aut
 Instalacja 
 -----------
 
-1. Należy pobrać i zainstalować bazę danych MariaDB/MySQL
+1. Należy pobrać i zainstalować bazę danych MariaDB/MySQL<br>
 https://downloads.mariadb.org/ (rekomendowana a najlepiej w wersji większej niż 10.0.8)
 lub
 http://dev.mysql.com/downloads/mysql/
