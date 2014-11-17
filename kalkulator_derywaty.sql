@@ -543,6 +543,17 @@ CREATE TEMPORARY TABLE priorytety (
 
 CREATE UNIQUE INDEX idx_priorytet ON priorytety (prior_nr,prior_klas_id,prior_klas_id_2);
 
+DROP TABLE IF EXISTS span_obl_risk;
+CREATE TEMPORARY TABLE span_obl_risk (
+  sobr_id INT NOT NULL AUTO_INCREMENT,
+  sobr_sob_id INT,
+  sobr_ryzyko DECIMAL(15,4) DEFAULT 0,
+  sobr_scen INT,
+  PRIMARY KEY (`sobr_id`)
+) ENGINE=MEMORY;
+
+CREATE INDEX idx_sobr ON span_obl_risk (sobr_sob_id);
+
 START TRANSACTION;
 INSERT INTO span_obl (sob_klas_id) select klas_id from klasy;
 SET @suma_ryzyk = 0;

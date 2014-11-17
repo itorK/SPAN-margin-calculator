@@ -105,13 +105,3 @@ CREATE INDEX idx_zlc_sppa ON zlecenia (zlc_sppa_id);
   PRIMARY KEY (`rpw_id`)
 );
 
-
-CREATE TABLE span_obl_risk (
-  sobr_id INT NOT NULL AUTO_INCREMENT,
-  sobr_sob_id INT,
-  sobr_ryzyko DECIMAL(15,4) DEFAULT 0,
-  sobr_scen INT,
-  PRIMARY KEY (`sobr_id`)
-);
-
-CREATE INDEX idx_sobr ON span_obl_risk (sobr_sob_id);
