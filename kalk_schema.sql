@@ -4,7 +4,11 @@
 */
 CREATE DATABASE kalkulator;
 
-INSERT INTO b (col1) VALUES ( LOAD_FILE('c:\\RPNJE_ZRS.xml'));
+USE kalkulator;
+
+CREATE TABLE b (
+  col1 longblob
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
  CREATE TABLE span_klasy_spready
     ( spks_id   INT NOT NULL AUTO_INCREMENT

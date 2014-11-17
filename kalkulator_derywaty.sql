@@ -437,8 +437,7 @@ DECLARE v_ret INT;
 DECLARE v_wynik DECIMAL(15,4) DEFAULT 0;
 START TRANSACTION;
 /* pierwszy test Zewn */
-DELETE FROM span_obl_risk;
-truncate table zlecenia;
+call prCzysc();
 call prDodajZlecenie('FW20Z1420',5,4.5);
 call prDodajZlecenie('FW40H15',-8,4.5);
 call prDodajZlecenie('F3MWZ14',-4,4.5);
@@ -447,8 +446,7 @@ call prDodajZlecenie('F1MWZ14',-10,4.5);
 call prOblDep;
 select @depozyt,':33094';
 /* drugi test Zewn*/
-DELETE FROM span_obl_risk;
-truncate table zlecenia;
+call prCzysc();
 call prDodajZlecenie('FW20Z1420',5,4.5);
 call prDodajZlecenie('FW40H15',-8,4.5);
 call prDodajZlecenie('F3MWZ14',-4,4.5);
@@ -457,8 +455,7 @@ call prOblDep;
 select @depozyt,':28864';
 
 /*3 test test opcji zewn*/
-DELETE FROM span_obl_risk;
-truncate table zlecenia;
+call prCzysc();
 call prDodajZlecenie('OW20L142600',10,4.5);
 call prDodajZlecenie('OW20X142650',-6,4.5);
 call prDodajZlecenie('FW40H15',-8,4.5);
@@ -466,8 +463,7 @@ call prOblDep;
 select @depozyt,':20707.30';
 
 /*3 test kontrakty spr wewn*/
-DELETE FROM span_obl_risk;
-truncate table zlecenia;
+call prCzysc();
 call prDodajZlecenie('F3MWH15',8,4.5);
 call prDodajZlecenie('F3MWJ15',-2,4.5);
 call prDodajZlecenie('F3MWN15',-3,4.5);
@@ -477,15 +473,13 @@ call prDodajZlecenie('F3MWH16',-5,4.5);
 call prOblDep;
 select @depozyt,':17909';
 /*3 test kontrakty spr wewn W20*/
-DELETE FROM span_obl_risk;
-truncate table zlecenia;
+call prCzysc();
 call prDodajZlecenie('FW20Z1420',8,4.5);
 call prDodajZlecenie('FW20U1520',-2,4.5);
 call prOblDep;
 select @depozyt,':24860';
 /*3 test opcje spr wewn W20*/
-DELETE FROM span_obl_risk;
-truncate table zlecenia;
+call prCzysc();
 call prDodajZlecenie('OW20O152900',-2,4.5);
 call prDodajZlecenie('OW20F152000',8,4.5);
 call prOblDep;
@@ -500,6 +494,14 @@ begin
 INSERT INTO zlecenia (zlc_klas_id,zlc_ilosc,zlc_cena_jedn,zlc_typ_operacji,zlc_sppa_id)
 (select sppa_klas_id,p_ilosc,p_cena_jedn,(CASE SIGN(p_ilosc) WHEN -1 THEN 'S' ELSE 'K' END),sppa_id 
 from span_papiery WHERE sppa_nazwa=p_symbol);
+end;
+//
+
+DROP PROCEDURE IF EXISTS prCzysc//
+CREATE PROCEDURE prCzysc()
+begin
+DELETE FROM span_obl_risk;
+truncate table zlecenia;
 end;
 //
 
@@ -593,8 +595,8 @@ call  prSpreadZewn(@szew);
 call  prPNO();
 call  prPO();
 call  prMDKO();
-select fnMax(fnMax(round(@suma_ryzyk) + @swew,@suma_mdko) - @szew - @suma_pno,0),@suma_po*-1 INTO @DPNO,@premia;
-select fnMax(@suma_pno - fnMax(round(@suma_ryzyk) + @swew,@suma_mdko) - @szew,0) INTO @NOD;
+select fnMax(fnMax(round(@suma_ryzyk) + round(@swew),@suma_mdko) - round(@szew) - @suma_pno,0),@suma_po*-1 INTO @DPNO,@premia;
+select fnMax(@suma_pno - fnMax(round(@suma_ryzyk) + round(@swew),@suma_mdko) - round(@szew),0) INTO @NOD;
 SELECT @DPNO - @NOD INTO @depozyt;
 commit;
 end;
