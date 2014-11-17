@@ -510,7 +510,7 @@ CREATE TEMPORARY TABLE span_obl (
   sob_po  DECIMAL(15,2) DEFAULT 0,
   sob_mdko  DECIMAL(15,2) DEFAULT 0,
   PRIMARY KEY (`sob_id`)
-);
+) ENGINE=MEMORY;
 
 CREATE INDEX idx_sob_klas ON span_obl (sob_klas_id);
 
@@ -524,7 +524,7 @@ CREATE TEMPORARY TABLE klasy_wewn(
   tkwew_strona_wartosc FLOAT(20,4) NOT NULL DEFAULT '0.0000',
   tkwew_depozyt FLOAT(20,4) NOT NULL DEFAULT '0.0000',
   PRIMARY KEY (`tkwew_id`)
-);
+) ENGINE=MEMORY;
 CREATE UNIQUE INDEX idx_klasy_wewn ON klasy_wewn (tkwew_poziom);
 
 DROP TABLE IF EXISTS priorytety;
@@ -539,7 +539,7 @@ CREATE TEMPORARY TABLE priorytety (
   prior_typ VARCHAR(2) DEFAULT 'N',
   prior_poprz_poziom INT,
   PRIMARY KEY (`prior_id`)
-);
+) ENGINE=MEMORY;
 
 CREATE UNIQUE INDEX idx_priorytet ON priorytety (prior_nr,prior_klas_id,prior_klas_id_2);
 
