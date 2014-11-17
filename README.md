@@ -14,8 +14,8 @@ Instalacja
 -----------
 
 1. Należy pobrać i zainstalować bazę danych MariaDB/MySQL<br>
-https://downloads.mariadb.org/ (rekomendowana a najlepiej w wersji większej niż 10.0.8)
-lub
+https://downloads.mariadb.org/ (rekomendowana a najlepiej w wersji większej niż 10.0.8)<br>
+lub<br>
 http://dev.mysql.com/downloads/mysql/
 
 2. Pobieramy 3 pliki -> kalk_schema.sql , import_span.sql, kalkulator_derywaty.sql
