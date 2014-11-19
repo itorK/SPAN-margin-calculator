@@ -1,7 +1,8 @@
 /* Kalkulator depozytow SPAN
 *  Written by Karol Przybylski 2014-11-10
 *  Visit http://www.esm-technology.pl or http://github.com/itorK
-gain and lossess
+
+gain and lossess wg w nastepnej wersji
 http://www.investopedia.com/ask/answers/04/021204.asp
 http://strategiccfo.com/wikicfo/realized-and-unrealized-gains-and-losses/
 */
@@ -13,18 +14,27 @@ DROP PROCEDURE IF EXISTS prRyzykoKlasy//
 CREATE PROCEDURE prRyzykoKlasy(p_kod_klasy VARCHAR(15),out p_ryzyko DECIMAL(15,2))
 begin
 DECLARE v_numer,v_klas_id  INT DEFAULT 0;
-DECLARE v_suma_max,v_suma DECIMAL(15,2) DEFAULT 0;
+DECLARE v_suma_max,v_suma,v_suma_depz DECIMAL(15,2) DEFAULT 0;
 DECLARE v_done INT DEFAULT 0;
 
 DECLARE cs_max_scen CURSOR FOR
-select dep_numer,sum(c.ilosc*dep_wartosc) as suma FROM (
+select dep_numer,sum(c.ilosc*dep_wartosc) as suma,0 FROM (
 select sum(zlc_ilosc) as ilosc,sppa_id,sppa_klas_id 
 from zlecenia,span_papiery
 where sppa_id=zlc_sppa_id
 group by span_papiery.sppa_id) c,depozyty_jedn
 where depozyty_jedn.dep_sppa_id=c.sppa_id
-and c.sppa_klas_id = v_klas_id 
-group by dep_numer;
+and c.sppa_klas_id =v_klas_id
+group by dep_numer
+UNION ALL
+select depz_numer,0,sum(c.ilosc*depz_wartosc) as suma_depz FROM (
+select sum(zlc_ilosc) as ilosc,sppa_id,sppa_klas_id 
+from zlecenia,span_papiery
+where sppa_id=zlc_sppa_id
+group by span_papiery.sppa_id) c,depozyty_jedn_zmien
+where depz_sppa_id=c.sppa_id
+and c.sppa_klas_id = v_klas_id
+group by depz_numer;
  
 DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = 1;
 
@@ -37,8 +47,11 @@ IF v_suma_max = 0 OR v_suma_max IS NULL THEN
 	DELETE FROM span_obl_risk WHERE sobr_sob_id = (select sob_id from span_obl where sob_klas_id=v_klas_id);
 	OPEN cs_max_scen;
 	REPEAT
-		   FETCH cs_max_scen INTO v_numer,v_suma;
+		   FETCH cs_max_scen INTO v_numer,v_suma,v_suma_depz;
 		   IF NOT v_done AND v_klas_id IS NOT null THEN
+		        IF v_suma_depz <> 0 THEN
+					SET v_suma = v_suma_depz;
+				END IF;
 				INSERT INTO span_obl_risk (sobr_sob_id,sobr_ryzyko,sobr_scen) values ((select sob_id from span_obl where sob_klas_id=v_klas_id),v_suma,v_numer);
 				IF v_suma > v_suma_max THEN
 					UPDATE span_obl SET sob_ryzyko = round(v_suma,0),sob_akt_scen=v_numer WHERE sob_klas_id=v_klas_id ;
@@ -317,8 +330,6 @@ SET v_done = 0;
 
 				IF v_JRZC1 > 0 AND v_JRZC2 > 0 THEN
 				    SET v_delta_max = v_delta_max ;
-					SET p_depozyt = p_depozyt + Round(IFNULL(v_JRZC1*v_delta_max* v_depozyt *v_liczba_delt,0),4) +Round(IFNULL(v_JRZC2*v_delta_max* v_depozyt *v_liczba_delt_2,0),4);
-					
 					UPDATE priorytety SET prior_delta =prior_delta - IFNULL((CASE SIGN(prior_delta) WHEN -1 THEN -1*v_delta_max*v_liczba_delt ELSE v_delta_max*v_liczba_delt END),0),
 										  prior_depozyt = prior_depozyt + Round(IFNULL(v_JRZC1*v_delta_max* v_depozyt *v_liczba_delt,0),4) WHERE prior_klas_id = v_klas_id;
 
@@ -330,6 +341,7 @@ SET v_done = 0;
 	UNTIL v_done END REPEAT l_spready;
 	CLOSE cs_spr;
 	
+SET p_depozyt = (select sum(round(prior_depozyt))from priorytety);
 UPDATE span_obl SET sob_spread_inter = (select Round(sum(prior_depozyt),0) from priorytety where prior_klas_id=sob_klas_id);
 end;
 
@@ -339,7 +351,7 @@ begin
 DECLARE v_klas_id,v_done INT DEFAULT 0;
 DECLARE v_pno DECIMAL (15,2) DEFAULT 0;
 DECLARE cs_klas CURSOR FOR
-select sppa_klas_id,IFNULL(sum(round(zlc_ilosc*sppa_kurs_wyk*sppa_mnoznik,2)),0) from zlecenia,span_papiery where sppa_id=zlc_sppa_id and sppa_typ_papieru='EQTY' group by sppa_klas_id;
+select sppa_klas_id,IFNULL(sum(zlc_ilosc*round(sppa_cena_instr*sppa_mnoznik,2)),0) from zlecenia,span_papiery where sppa_id=zlc_sppa_id and sppa_typ_papieru='EQTY' group by sppa_klas_id;
 
 DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = 1;
 SET @suma_pno = 0;
@@ -401,12 +413,150 @@ CLOSE cs_klas;
 end;
 //
 
+DROP PROCEDURE IF EXISTS prKorygujPSR//
+CREATE PROCEDURE prKorygujPSR(p_kod_papieru VARCHAR(15),p_psr DECIMAL(15,2))
+begin
+
+INSERT INTO papier_korekta(pko_sppa_id,pko_kor_psr) 
+select sppa_id,p_psr FROM span_papiery WHERE sppa_nazwa = p_kod_papieru
+ON DUPLICATE KEY UPDATE pko_kor_psr = p_psr;
+
+end;
+
+/*http://stackoverflow.com/questions/7447724/calculating-a-norm-distribution-in-mysql */
+DROP FUNCTION IF EXISTS fnNormal//
+CREATE FUNCTION fnNormal(p_wartosc DECIMAL(10,5))
+RETURNS DECIMAL(10,5)
+begin
+DECLARE v_normal,v_a1,v_a2,v_a3,v_a4,v_a5,v_k  DECIMAL(10,5) DEFAULT 0;
+
+  
+  IF p_wartosc > 38 THEN
+    return 1;
+  END IF;
+
+  IF p_wartosc < -38 THEN
+    return 0;
+  END IF;
+  
+
+  SET v_a1 = 0.319381530;
+  SET v_a2 =-0.356563782;
+  SET v_a3 = 1.781477937;
+  SET v_a4 =-1.821255978;
+  SET v_a5 = 1.330274429;
+
+  SET v_k = 1 / ( 1 + 0.231641900 * abs(p_wartosc) );
+  
+  SET v_normal = 1.0 - ( 1 / SQRT( 2 * 3.14159265359 ) ) * EXP( -0.5 * POW(p_wartosc, 2) ) *
+                      ( v_a1 * v_k + v_a2 * POW(v_k, 2) + v_a3 * POW(v_k, 3) + v_a4 * POW(v_k, 4) + v_a5 * POW(v_k, 5) );
+  IF (p_wartosc <= 0.0) THEN
+    SET v_normal = 1.0  - v_normal;
+  END IF;
+  RETURN v_normal;
+ end; 
+  
+DROP PROCEDURE IF EXISTS prWyliczScenJedn//
+CREATE PROCEDURE prWyliczScenJedn()
+begin
+DECLARE v_typ_pap,v_rodzaj_opcji VARCHAR(5); 
+DECLARE v_kurs_instr , v_mnoznik,v_kurs_wyk, v_cena_instr_baz,v_stopa_proc, v_stopa_dyw,
+         v_vsr,v_czas_do_wygas, v_zmien_op, v_zmien_op_wygas,v_nr_scen, v_dep,v_psr decimal(10,5) DEFAULT 0;
+DECLARE v_done,v_id INT DEFAULT 0;
+DECLARE cs_papier CURSOR FOR
+SELECT DISTINCT sppa_id,sppa_typ_papieru, sppa_kurs_wyk, sppa_mnoznik, sppa_rodzaj_opcji,
+	 sppa_cena_instr, sppa_cena_instr_baz, sppa_stopa_proc, sppa_stopa_dyw,
+	 sppa_vsr, sppa_czas_do_wygas, sppa_zmien_op, sppa_zmien_op_wygasl, sppa_psr + pko_kor_psr
+FROM span_papiery,zlecenia,papier_korekta
+WHERE zlc_sppa_id=sppa_id AND sppa_id=pko_sppa_id;
+   
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = 1;						   
+
+DROP TABLE IF EXISTS stale;
+CREATE TEMPORARY TABLE stale(
+						      id    INT(6)  NOT NULL AUTO_INCREMENT,
+                              u          DECIMAL(10,9),
+                              v          DECIMAL(10,9),
+                              w          DECIMAL(10,9),
+  PRIMARY KEY (`id`)
+) ENGINE=MEMORY;
+
+  INSERT INTO stale(u,v,w) VALUES ( 0, 1, 1);
+  INSERT INTO stale(u,v,w) VALUES ( 0, -1, 1);
+  INSERT INTO stale(u,v,w) VALUES ( 1/3, 1, 1);
+  INSERT INTO stale(u,v,w) VALUES ( 1/3, -1, 1);
+  INSERT INTO stale(u,v,w) VALUES ( -1/3, 1, 1);
+  INSERT INTO stale(u,v,w) VALUES ( -1/3, -1, 1);
+  INSERT INTO stale(u,v,w) VALUES ( 2/3, 1, 1);
+  INSERT INTO stale(u,v,w) VALUES ( 2/3, -1, 1);
+  INSERT INTO stale(u,v,w) VALUES ( -2/3, 1, 1);
+  INSERT INTO stale(u,v,w) VALUES ( -2/3, -1, 1);
+  INSERT INTO stale(u,v,w) VALUES (1, 1, 1);
+  INSERT INTO stale(u,v,w) VALUES (1, -1, 1);
+  INSERT INTO stale(u,v,w) VALUES (-1, 1, 1);
+  INSERT INTO stale(u,v,w) VALUES (-1, -1, 1);
+  INSERT INTO stale(u,v,w) VALUES (3, 0, 0.32);
+  INSERT INTO stale(u,v,w) VALUES (-3, 0, 0.32);
+
+
+SET v_done = 0;		
+OPEN cs_papier;
+REPEAT
+	   FETCH cs_papier INTO v_id,v_typ_pap, v_kurs_wyk, v_mnoznik, v_rodzaj_opcji,
+         v_kurs_instr, v_cena_instr_baz, v_stopa_proc, v_stopa_dyw,
+         v_vsr, v_czas_do_wygas, v_zmien_op, v_zmien_op_wygas, v_psr;
+	   IF NOT v_done THEN
+	   IF v_typ_pap = 'FUT' THEN
+		   INSERT INTO depozyty_jedn_zmien(depz_sppa_id,depz_numer,depz_wartosc)
+			 SELECT v_id, id,( v_kurs_instr * v_mnoznik - ( v_kurs_instr * v_mnoznik * ( 1 + v_psr * u ) ) ) * w FROM stale;
+		   END IF;
+	   ELSE
+	        IF v_zmien_op = -1 THEN
+			  SET v_zmien_op = v_zmien_op_wygas;
+			END IF;
+			/*(logn(tt_dane_c.cb/x_kurs_wyk) + ( ( x_stopa_proc - x_stopa_dyw + pow(tt_dane_c.vol,2)/2 ) * x_czas_do_wygas ) ) / ( tt_dane_c.vol * root(x_czas_do_wygas,2) )*/
+			
+	       INSERT INTO depozyty_jedn_zmien(depz_sppa_id,depz_numer,depz_d1, depz_vol, depz_cb)
+		   SELECT v_id, id, (LN((v_cena_instr_baz * ( 1 + (v_psr * u)))/v_kurs_wyk) + ((v_stopa_proc - v_stopa_dyw + 
+		                            POW(v_zmien_op + (v_vsr * v),2)/2) * v_czas_do_wygas)) / ((v_zmien_op + (v_vsr * v)) *
+									SQRT(v_czas_do_wygas) ), v_zmien_op + v_vsr * v,  
+									 v_cena_instr_baz * ( 1 + v_psr * u )
+							   FROM stale;
+
+						
+						
+			update depozyty_jedn_zmien SET depz_d1 = (LN(depz_cb/v_kurs_wyk) + ((v_stopa_proc - v_stopa_dyw + POW(depz_vol,2)/2) * v_czas_do_wygas) ) / (depz_vol * sqrt(v_czas_do_wygas)) where depz_sppa_id=v_id;			
+			update depozyty_jedn_zmien SET depz_d2 = depz_d1 - depz_vol * SQRT(v_czas_do_wygas) where depz_sppa_id=v_id;
+
+			IF v_rodzaj_opcji = 'C' THEN
+			
+			  update depozyty_jedn_zmien SET depz_ct =
+                                  v_mnoznik * ( depz_cb * EXP( -v_stopa_dyw * v_czas_do_wygas) * fnNormal( depz_d1 ) - v_kurs_wyk * EXP(-v_stopa_proc * v_czas_do_wygas) * fnNormal( depz_d2 ) )
+				WHERE depz_sppa_id=v_id;
+			ELSE
+
+			  update depozyty_jedn_zmien SET depz_ct = 
+			                      v_mnoznik * ( ( v_kurs_wyk * EXP(-v_stopa_proc * v_czas_do_wygas) * fnNormal( -depz_d2 ) ) - (depz_cb * EXP( -v_stopa_dyw * v_czas_do_wygas) * fnNormal( -depz_d1 ) ) )
+			    WHERE depz_sppa_id=v_id;
+			END IF;
+
+		   UPDATE depozyty_jedn_zmien,stale SET  depz_wartosc = ( v_kurs_instr * v_mnoznik - depz_ct ) * w where stale.id=depz_numer;
+		  
+	   END IF;
+UNTIL v_done END REPEAT;
+CLOSE cs_papier;
+	
+end;
+//
+
+
 DROP PROCEDURE IF EXISTS prTest//
 CREATE PROCEDURE prTest()
 begin
 DECLARE v_ret INT;
 DECLARE v_wynik DECIMAL(15,4) DEFAULT 0;
 START TRANSACTION;
+SELECT 'Wartosci do powrownania z plkiem RPJNE_ZRS.xml z dnia 20141031';
 /* pierwszy test Zewn */
 call prCzysc();
 call prDodajZlecenie('FW20Z1420',5,4.5);
@@ -471,7 +621,7 @@ end;
 DROP PROCEDURE IF EXISTS prCzysc//
 CREATE PROCEDURE prCzysc()
 begin
-DELETE FROM span_obl_risk;
+truncate table papier_korekta;
 truncate table zlecenia;
 end;
 //
@@ -553,6 +703,20 @@ CREATE TEMPORARY TABLE span_obl_risk (
 ) ENGINE=MEMORY;
 
 CREATE INDEX idx_sobr ON span_obl_risk (sobr_sob_id);
+DROP TABLE IF EXISTS depozyty_jedn_zmien;
+
+CREATE TEMPORARY TABLE depozyty_jedn_zmien
+( depz_id INT(6)  NOT NULL AUTO_INCREMENT,
+depz_sppa_id INT,
+depz_numer INT,
+depz_vol DECIMAL(10,6), 
+depz_cb DECIMAL(10,5),
+depz_ct DECIMAL(12,6),
+depz_d1 DECIMAL(10,5),
+depz_d2 DECIMAL(10,5),
+depz_wartosc decimal(10,2),
+PRIMARY KEY (`depz_id`)
+) ENGINE=MEMORY;
 
 START TRANSACTION;
 INSERT INTO span_obl (sob_klas_id) select klas_id from klasy;
@@ -576,6 +740,7 @@ call  prSpreadZewn(@szew);
 call  prPNO();
 call  prPO();
 call  prMDKO();
+SET   @pno = @suma_pno;
 select fnMax(fnMax(round(@suma_ryzyk) + round(@swew),@suma_mdko) - round(@szew) - @suma_pno,0),@suma_po*-1 INTO @DPNO,@premia;
 select fnMax(@suma_pno - fnMax(round(@suma_ryzyk) + round(@swew),@suma_mdko) - round(@szew),0) INTO @NOD;
 SELECT @DPNO - @NOD INTO @depozyt;

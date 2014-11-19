@@ -7,7 +7,7 @@ CREATE DATABASE kalkulator;
 USE kalkulator;
 
 CREATE TABLE b (
-  col1 longblob
+  col1 longblob NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
  CREATE TABLE span_klasy_spready
@@ -105,3 +105,10 @@ CREATE INDEX idx_zlc_sppa ON zlecenia (zlc_sppa_id);
   PRIMARY KEY (`rpw_id`)
 );
 
+  CREATE TABLE papier_korekta
+ ( pko_id INT(6)  NOT NULL AUTO_INCREMENT,
+   pko_sppa_id INT,
+   pko_kor_psr decimal(10,2),
+   PRIMARY KEY (`pko_id`)
+  );
+CREATE UNIQUE INDEX idx_pap_kor ON papier_korekta (pko_sppa_id);

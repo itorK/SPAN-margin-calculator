@@ -177,7 +177,7 @@ select extractvalue(col1,'count(//futPf)') INTO v_ilosc_walorow FROM b;
 				extractvalue(col1,CONCAT('//futPf[',v_i,']//fut[',v_s,']/scanRate/priceScan')),
 				extractvalue(col1,CONCAT('//futPf[',v_i,']//fut[',v_s,']/t')),
 				extractvalue(col1,CONCAT('//futPf[',v_i,']//fut[',v_s,']/ra/d')),
-				extractvalue(col1,CONCAT('//futPf[',v_i,']//fut[',v_s,']/cId'))
+				99
 				INTO v_ilosc_scen,v_data_wyg,v_kurs_instr,v_cena_instr,v_wsp_skal,v_stopa_proc,v_psr,v_ryz_zmien,v_ryz_ceny,
 				v_czas_do_wygas,v_delta_ref,v_poziom
 				FROM b;
@@ -237,12 +237,12 @@ DROP FUNCTION IF EXISTS fnImportujOpcje//
 CREATE FUNCTION fnImportujOpcje()
 RETURNS int
 begin
-DECLARE v_ilosc_walorow,v_i,v_s,v_n,v_serie,v_sc,v_poziom,v_klas_id,v_spid,v_ilosc_scen,v_ilosc_opcji INT DEFAULT 0;
+DECLARE v_ilosc_walorow,v_i,v_s,v_n,v_serie,v_sc,v_poziom,v_klas_id,v_spid,v_ilosc_scen,v_ilosc_opcji, v_pId, v_cId INT DEFAULT 0;
 DECLARE v_kod_span,v_kod_klasy,v_waluta,v_data_wyg,v_sppa_nazwa,v_end,v_kod_klasy_tmp,v_rodzaj_opcji VARCHAR(255);
-DECLARE v_mnoznik,v_kurs_instr,v_cena_instr,v_scen,v_kurs_wyk DECIMAL(15,4) DEFAULT 0;
+DECLARE v_mnoznik,v_kurs_instr,v_cena_instr,v_scen,v_kurs_wyk,v_stopa_dyw,v_cena_baz DECIMAL(15,6) DEFAULT 0;
 DECLARE v_wsp_skal,v_stopa_proc,v_psr,v_ryz_zmien,v_ryz_ceny,v_czas_do_wygas,v_delta_ref FLOAT(20,6) DEFAULT 0;
-DECLARE v_zmien_op FLOAT(20,6);
-DECLARE v_typ_papieru VARCHAR(5);
+DECLARE v_zmien_op,v_zmien_op_wygasl FLOAT(20,6);
+DECLARE v_typ_papieru, v_baz_nazwa VARCHAR(5);
 
 
 select extractvalue(col1,'count(//oopPf)') INTO v_ilosc_walorow FROM b; 
@@ -272,9 +272,14 @@ select extractvalue(col1,'count(//oopPf)') INTO v_ilosc_walorow FROM b;
 				extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']/scanRate/volScan')),
 				extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']/scanRate/priceScan')),
 				extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']/t')),
-				99
+				99,
+				extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']/v')),
+				extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']/divRate/val')),
+				extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']/undC/exch')),
+				extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']/undC/pfId')),
+				extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']/undC/cId'))
 				INTO v_ilosc_opcji,v_data_wyg,v_wsp_skal,v_stopa_proc,v_psr,v_ryz_zmien,v_ryz_ceny,
-				v_czas_do_wygas,v_poziom
+				v_czas_do_wygas,v_poziom, v_zmien_op_wygasl, v_stopa_dyw, v_baz_nazwa, v_pId, v_cId
 				FROM b;
 				l_opt: LOOP
 				  SET v_sc = 0;
@@ -284,10 +289,11 @@ select extractvalue(col1,'count(//oopPf)') INTO v_ilosc_walorow FROM b;
 				         extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']//opt[',v_n,']/k')),
 					     extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']//opt[',v_n,']/o')),
 						 extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']//opt[',v_n,']/p')),
-						 extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']//opt[',v_n,']/v')),
 						 extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']//opt[',v_n,']/val')),
-						 extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']//opt[',v_n,']//ra//d'))
-				  INTO v_ilosc_scen,v_kurs_wyk,v_rodzaj_opcji,v_kurs_instr,v_cena_instr,v_zmien_op,v_delta_ref
+						 extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']//opt[',v_n,']/v')),
+						 extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']//opt[',v_n,']//ra//d')),
+						 extractvalue(col1,CONCAT('//exchange[exch/text()="',v_baz_nazwa,'"]//phyPf[pfId/text()=',v_pId,']/phy[cId/text()=',v_cId,']/val'))
+				  INTO v_ilosc_scen,v_kurs_wyk,v_rodzaj_opcji,v_kurs_instr,v_cena_instr,v_zmien_op,v_delta_ref,v_cena_baz
 				  FROM b;
 				    SET v_end = CAST(v_kurs_wyk as int);
 					SET v_kod_klasy_tmp = v_kod_klasy;
@@ -329,9 +335,9 @@ select extractvalue(col1,'count(//oopPf)') INTO v_ilosc_walorow FROM b;
 					
 					INSERT INTO span_papiery (sppa_nazwa,sppa_rodzaj_opcji,sppa_klas_id,sppa_data_wygas,sppa_kurs_wyk,sppa_typ_papieru,sppa_czas_do_wygas,sppa_psr,
 					sppa_vsr,sppa_mnoznik,sppa_delta,sppa_stopa_proc,sppa_wsp_skal_delty,sppa_nr_poziomu,sppa_cena_instr,
-					sppa_zmien_op) 
-					values (v_sppa_nazwa,v_rodzaj_opcji,v_klas_id,v_data_wyg,v_kurs_instr,v_typ_papieru,v_czas_do_wygas,v_psr,v_ryz_zmien,v_mnoznik,v_delta_ref,
-					v_stopa_proc, v_wsp_skal,v_poziom,v_cena_instr,v_zmien_op);
+					sppa_zmien_op, sppa_zmien_op_wygasl, sppa_stopa_dyw,sppa_cena_instr_baz) 
+					values (v_sppa_nazwa,v_rodzaj_opcji,v_klas_id,v_data_wyg,v_kurs_wyk,v_typ_papieru,v_czas_do_wygas,v_psr,v_ryz_zmien,v_mnoznik,v_delta_ref,
+					v_stopa_proc, v_wsp_skal,v_poziom,v_kurs_instr,v_zmien_op, v_zmien_op_wygasl, v_stopa_dyw, v_cena_baz);
 					SET v_spid = LAST_INSERT_ID();
 
 					l_scen: LOOP
@@ -376,7 +382,6 @@ truncate table spready_nogi;
 truncate table klasy;
 truncate table span_papiery;
 truncate table depozyty_jedn;
-truncate table span_obl_risk;
 select fnImportujKontrakty() INTO v_ret;
 select fnImportujOpcje() INTO v_ret;
 select fnImportujSpready() INTO v_ret;
