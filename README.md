@@ -31,15 +31,24 @@ Użycie - Import
 -----------
 1. Sciągamy plik ze strony KDPW<br>
 http://www.kdpwccp.pl/pl/zarzadzanie/Parametry/SPAN/RPNJI_ZRS.xml
-2. W konsoli MySQL wpisujemy komendę
-```
-MariaDB [kalkulator]> INSERT INTO b (col1) VALUES ( LOAD_FILE('RPNJE_ZRS.xml'));
-```
-
-3. Następnie
-``` 
-MariaDB [kalkulator]> call prImportuj();
-``` 
+2. W pliku my.ini (plik konfiguracyjny MySQL) dodajemy wartość
+  ```
+  [mysqld]
+  max_allowed_packet = 50M 
+  ```
+3. W konsoli MySQL wpisujemy komendę
+  ```
+  MariaDB [kalkulator]> INSERT INTO b (col1) VALUES ( LOAD_FILE('RPNJE_ZRS.xml'));
+  ```
+  Dla sprawdzenia poprawności załadowania pliku
+  ```
+  MariaDB [kalkulator]> SELECT count(*) FROM b WHERE col1 IS NOT NULL;
+  ```
+  Powinno zwrócić wartość 1, jeśli 0 to należy wprowadzić poprawną ścieżkę do pliku RPNJE_ZRS.xml
+4. Następnie
+  ``` 
+  MariaDB [kalkulator]> call prImportuj();
+  ``` 
 
 ######UWAGA
 Proces może długo trwać(w moim przypadku 30 minut).
@@ -47,22 +56,22 @@ Proces może długo trwać(w moim przypadku 30 minut).
 Użycie - Kalkulacja
 -----------
 1. Czyścimy tabelę zlecenia
-``` 
-MariaDB [kalkulator]> call prCzysc();
-``` 
+  ``` 
+  MariaDB [kalkulator]> call prCzysc();
+  ``` 
 2. Dodajemy pozycje do kalkulatora, gdzie 1 parametr to Nazwa Intrumentu, 2 parametr to ilość pozycji, 3 parametr to cena(w przypadku kontraktów jest ignorowana)
-``` 
-MariaDB [kalkulator]> call prDodajZlecenie('FW20Z1420',8,4.5);
-MariaDB [kalkulator]> call prDodajZlecenie('FW20U1520',-2,4.5);
-``` 
+  ``` 
+  MariaDB [kalkulator]> call prDodajZlecenie('FW20Z1420',8,4.5);
+  MariaDB [kalkulator]> call prDodajZlecenie('FW20U1520',-2,4.5);
+  ``` 
 3. Uruchamiamy właściwą kalkulację
-``` 
-MariaDB [kalkulator]> call prOblDep;
-``` 
+  ``` 
+  MariaDB [kalkulator]> call prOblDep;
+  ``` 
 4. Odczyt parametrów
-``` 
-MariaDB [kalkulator]> select @depozyt,@NOD, @DPNO, @premia, @pno;
-``` 
+  ``` 
+  MariaDB [kalkulator]> select @depozyt,@NOD, @DPNO, @premia, @pno;
+  ``` 
 
 Źródła
 -----------
