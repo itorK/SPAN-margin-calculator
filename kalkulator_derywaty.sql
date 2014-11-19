@@ -553,58 +553,58 @@ START TRANSACTION;
 SELECT 'Wartosci do powrownania z plkiem RPJNE_ZRS.xml z dnia 20141031';
 /* pierwszy test Zewn */
 call prCzysc();
-call prDodajZlecenie('FW20Z1420',5,4.5);
-call prDodajZlecenie('FW40H15',-8,4.5);
-call prDodajZlecenie('F3MWZ14',-4,4.5);
-call prDodajZlecenie('F6MWZ14',6,4.5);
-call prDodajZlecenie('F1MWZ14',-10,4.5);
+call prDodajPozycje('FW20Z1420',5,4.5);
+call prDodajPozycje('FW40H15',-8,4.5);
+call prDodajPozycje('F3MWZ14',-4,4.5);
+call prDodajPozycje('F6MWZ14',6,4.5);
+call prDodajPozycje('F1MWZ14',-10,4.5);
 call prOblDep;
 select @depozyt,':33094';
 /* drugi test Zewn*/
 call prCzysc();
-call prDodajZlecenie('FW20Z1420',5,4.5);
-call prDodajZlecenie('FW40H15',-8,4.5);
-call prDodajZlecenie('F3MWZ14',-4,4.5);
-call prDodajZlecenie('F6MWZ14',6,4.5);
+call prDodajPozycje('FW20Z1420',5,4.5);
+call prDodajPozycje('FW40H15',-8,4.5);
+call prDodajPozycje('F3MWZ14',-4,4.5);
+call prDodajPozycje('F6MWZ14',6,4.5);
 call prOblDep;
 select @depozyt,':28864';
 
 /*3 test test opcji zewn*/
 call prCzysc();
-call prDodajZlecenie('OW20L142600',10,4.5);
-call prDodajZlecenie('OW20X142650',-6,4.5);
-call prDodajZlecenie('FW40H15',-8,4.5);
+call prDodajPozycje('OW20L142600',10,4.5);
+call prDodajPozycje('OW20X142650',-6,4.5);
+call prDodajPozycje('FW40H15',-8,4.5);
 call prOblDep;
 select @depozyt,':20707.30';
 
 /*3 test kontrakty spr wewn*/
 call prCzysc();
-call prDodajZlecenie('F3MWH15',8,4.5);
-call prDodajZlecenie('F3MWJ15',-2,4.5);
-call prDodajZlecenie('F3MWN15',-3,4.5);
-call prDodajZlecenie('F3MWU15',6,4.5);
-call prDodajZlecenie('F3MWM16',6,4.5);
-call prDodajZlecenie('F3MWH16',-5,4.5);
+call prDodajPozycje('F3MWH15',8,4.5);
+call prDodajPozycje('F3MWJ15',-2,4.5);
+call prDodajPozycje('F3MWN15',-3,4.5);
+call prDodajPozycje('F3MWU15',6,4.5);
+call prDodajPozycje('F3MWM16',6,4.5);
+call prDodajPozycje('F3MWH16',-5,4.5);
 call prOblDep;
 select @depozyt,':17909';
 /*3 test kontrakty spr wewn W20*/
 call prCzysc();
-call prDodajZlecenie('FW20Z1420',8,4.5);
-call prDodajZlecenie('FW20U1520',-2,4.5);
+call prDodajPozycje('FW20Z1420',8,4.5);
+call prDodajPozycje('FW20U1520',-2,4.5);
 call prOblDep;
 select @depozyt,':24860';
 /*3 test opcje spr wewn W20*/
 call prCzysc();
-call prDodajZlecenie('OW20O152900',-2,4.5);
-call prDodajZlecenie('OW20F152000',8,4.5);
+call prDodajPozycje('OW20O152900',-2,4.5);
+call prDodajPozycje('OW20F152000',8,4.5);
 call prOblDep;
 select @depozyt,':-10971.82';
 commit;
 end;
 //
 
-DROP PROCEDURE IF EXISTS prDodajZlecenie//
-CREATE PROCEDURE prDodajZlecenie(p_symbol VARCHAR(100),p_ilosc INT, p_cena_jedn DECIMAL(15,4))
+DROP PROCEDURE IF EXISTS prDodajPozycje//
+CREATE PROCEDURE prDodajPozycje(p_symbol VARCHAR(100),p_ilosc INT, p_cena_jedn DECIMAL(15,4))
 begin
 INSERT INTO zlecenia (zlc_klas_id,zlc_ilosc,zlc_cena_jedn,zlc_typ_operacji,zlc_sppa_id)
 (select sppa_klas_id,p_ilosc,p_cena_jedn,(CASE SIGN(p_ilosc) WHEN -1 THEN 'S' ELSE 'K' END),sppa_id

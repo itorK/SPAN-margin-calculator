@@ -56,14 +56,14 @@ Proces może długo trwać(w moim przypadku 30 minut).
 
 Użycie - Kalkulacja
 -----------
-1. Czyścimy tabelę zlecenia<br>
+1. Czyścimy pozycje<br>
   ``` 
   MariaDB [kalkulator]> call prCzysc();
   ``` 
 2. Dodajemy pozycje do kalkulatora, gdzie 1 parametr to Nazwa Intrumentu, 2 parametr to ilość pozycji, 3 parametr to cena(w przypadku kontraktów jest ignorowana, w przypadku opcji wpływa na premię opcyjną)<br>
 ```         
-MariaDB [kalkulator]> call prDodajZlecenie('FW20Z1420',8,4.5);
-MariaDB [kalkulator]> call prDodajZlecenie('FW20U1520',-2,4.5);
+MariaDB [kalkulator]> call prDodajPozycje('FW20Z1420',8,4.5);
+MariaDB [kalkulator]> call prDodajPozycje('FW20U1520',-2,4.5);
 ```     
 3. Uruchamiamy właściwą kalkulację<br>
   ``` 
