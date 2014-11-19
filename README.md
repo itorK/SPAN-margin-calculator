@@ -82,5 +82,5 @@ MariaDB [kalkulator]> call prDodajZlecenie('FW20U1520',-2,4.5);
 
 Autor
 -----------
-[Karol Przybylski](http://www.esm-technology.pl) 
+[Karol Przybylski](http://www.esm-technology.pl) <br>
 karol.przybylski@esm-technology.pl
