@@ -65,7 +65,13 @@ Użycie - Kalkulacja
 MariaDB [kalkulator]> call prDodajPozycje('FW20Z1420',8,4.5);
 MariaDB [kalkulator]> call prDodajPozycje('FW20U1520',-2,4.5);
 ```     
-3. Uruchamiamy właściwą kalkulację<br>
+ Można wpływać na wysokość depozytu zmieniając parametr **Price Scan Range**<br>
+``` 
+MariaDB [kalkulator]> call prKorygujPSR('FW20U1520',-0.036);
+``` 
+ <br>Wynikiem właściwym Price Scan Range jest suma zaimportowanego Price Scan Range i 2 parametru funkcji prKorygujPSR.<br>
+   W tym wypadku współczynnik PSR zostanie obniżony o wartość 0.036.<br>
+3. **Uruchamiamy właściwą kalkulację**<br>
   ``` 
   MariaDB [kalkulator]> call prOblDep;
   ``` 
@@ -73,7 +79,7 @@ MariaDB [kalkulator]> call prDodajPozycje('FW20U1520',-2,4.5);
   ``` 
   MariaDB [kalkulator]> select @depozyt,@NOD, @DPNO, @premia, @pno;
   ``` 
-<br>Właściwym wynikiem jest @depozyt
+<br>Właściwym wynikiem jest @depozyt.
 
 Źródła
 -----------
