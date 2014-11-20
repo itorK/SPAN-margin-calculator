@@ -448,7 +448,7 @@ DECLARE v_normal,v_a1,v_a2,v_a3,v_a4,v_a5,v_k  DECIMAL(10,5) DEFAULT 0;
 
   SET v_k = 1 / ( 1 + 0.231641900 * abs(p_wartosc) );
 
-  SET v_normal = 1.0 - ( 1 / SQRT( 2 * 3.14159265359 ) ) * EXP( -0.5 * POW(p_wartosc, 2) ) *
+  SET v_normal = 1.0 - ( 1 / SQRT( 2 * PI() ) ) * EXP( -0.5 * POW(p_wartosc, 2) ) *
                       ( v_a1 * v_k + v_a2 * POW(v_k, 2) + v_a3 * POW(v_k, 3) + v_a4 * POW(v_k, 4) + v_a5 * POW(v_k, 5) );
   IF (p_wartosc <= 0.0) THEN
     SET v_normal = 1.0  - v_normal;
@@ -517,7 +517,7 @@ REPEAT
 				END IF;
 
 			   INSERT INTO depozyty_jedn_zmien(depz_sppa_id,depz_numer,depz_d1, depz_vol, depz_cb)
-			   SELECT v_id, id, (LN((v_cena_instr_baz * ( 1 + (v_psr * u)))/v_kurs_wyk) + ((v_stopa_proc - v_stopa_dyw +
+			   SELECT v_id, id, (LN((v_cena_instr_baz * ( 1 + v_psr * u))/v_kurs_wyk) + ((v_stopa_proc - v_stopa_dyw +
 										POW(v_zmien_op + (v_vsr * v),2)/2) * v_czas_do_wygas)) / ((v_zmien_op + (v_vsr * v)) *
 										SQRT(v_czas_do_wygas) ), v_zmien_op + v_vsr * v,
 										 v_cena_instr_baz * ( 1 + v_psr * u )
@@ -618,13 +618,20 @@ call prKorygujPSR('FW20Z1420',-0.037);
 call prOblDep;
 select @depozyt,':14599';
 
-/*siodmy test sprawdzenie korekty Price Scan Rate Kontrakty*/
+/*siodmy test sprawdzenie korekty Price Scan Rate Opcje Put*/
 
 call prCzysc();
 call prDodajPozycje('OW20O152900',-2,4.5);
 call prKorygujPSR('OW20O152900',0);
 call prOblDep;
 select @depozyt,':12079.86';
+
+/*osmy test sprawdzenie korekty Price Scan Rate Opcje Call*/
+call prCzysc();
+call prDodajPozycje('OW20F152000',-2,4.5);
+call prKorygujPSR('OW20F152000',0);
+call prOblDep;
+select @depozyt,':12884.420';
 
 commit;
 end;

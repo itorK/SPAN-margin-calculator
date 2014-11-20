@@ -271,7 +271,7 @@ select extractvalue(col1,'count(//oopPf)') INTO v_ilosc_walorow FROM b;
 				extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']/scanRate/priceScanPct')),
 				extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']/scanRate/volScan')),
 				extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']/scanRate/priceScan')),
-				extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']/t')),
+				extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']/t')) - 0.01,
 				99,
 				extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']/v')),
 				extractvalue(col1,CONCAT('//oopPf[',v_i,']//series[',v_s,']/divRate/val')),
