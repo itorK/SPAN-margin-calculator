@@ -18,13 +18,14 @@ DECLARE v_suma_max,v_suma,v_suma_depz DECIMAL(15,2) DEFAULT 0;
 DECLARE v_done INT DEFAULT 0;
 
 DECLARE cs_max_scen CURSOR FOR
-select dep_numer,sum(c.ilosc*dep_wartosc) as suma,0 FROM (
+SELECT b.dep_numer,sum(b.suma),sum(b.suma_depz) from (
+select dep_numer,sum(c.ilosc*dep_wartosc) as suma,0 as suma_depz FROM (
 select sum(zlc_ilosc) as ilosc,sppa_id,sppa_klas_id
 from zlecenia,span_papiery
 where sppa_id=zlc_sppa_id
 group by span_papiery.sppa_id) c,depozyty_jedn
 where depozyty_jedn.dep_sppa_id=c.sppa_id
-and c.sppa_klas_id =v_klas_id
+and c.sppa_klas_id = v_klas_id
 group by dep_numer
 UNION ALL
 select depz_numer,0,sum(c.ilosc*depz_wartosc) as suma_depz FROM (
@@ -34,7 +35,7 @@ where sppa_id=zlc_sppa_id
 group by span_papiery.sppa_id) c,depozyty_jedn_zmien
 where depz_sppa_id=c.sppa_id
 and c.sppa_klas_id = v_klas_id
-group by depz_numer;
+group by depz_numer) b group by b.dep_numer;
 
 DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = 1;
 
@@ -44,6 +45,7 @@ SELECT klas_id INTO v_klas_id FROM klasy WHERE klas_nazwa = p_kod_klasy;
 
 SELECT sob_ryzyko INTO v_suma_max FROM span_obl WHERE sob_klas_id=v_klas_id;
 IF v_suma_max = 0 OR v_suma_max IS NULL THEN
+	call prWyliczScenJedn(v_klas_id);
 	DELETE FROM span_obl_risk WHERE sobr_sob_id = (select sob_id from span_obl where sob_klas_id=v_klas_id);
 	OPEN cs_max_scen;
 	REPEAT
@@ -414,7 +416,7 @@ end;
 //
 
 DROP PROCEDURE IF EXISTS prKorygujPSR//
-CREATE PROCEDURE prKorygujPSR(p_kod_papieru VARCHAR(15),p_psr DECIMAL(15,2))
+CREATE PROCEDURE prKorygujPSR(p_kod_papieru VARCHAR(15),p_psr DECIMAL(15,6))
 begin
 
 INSERT INTO papier_korekta(pko_sppa_id,pko_kor_psr)
@@ -455,7 +457,7 @@ DECLARE v_normal,v_a1,v_a2,v_a3,v_a4,v_a5,v_k  DECIMAL(10,5) DEFAULT 0;
  end;
 
 DROP PROCEDURE IF EXISTS prWyliczScenJedn//
-CREATE PROCEDURE prWyliczScenJedn()
+CREATE PROCEDURE prWyliczScenJedn(p_klas_id INT)
 begin
 DECLARE v_typ_pap,v_rodzaj_opcji VARCHAR(5);
 DECLARE v_kurs_instr , v_mnoznik,v_kurs_wyk, v_cena_instr_baz,v_stopa_proc, v_stopa_dyw,
@@ -466,7 +468,8 @@ SELECT DISTINCT sppa_id,sppa_typ_papieru, sppa_kurs_wyk, sppa_mnoznik, sppa_rodz
 	 sppa_cena_instr, sppa_cena_instr_baz, sppa_stopa_proc, sppa_stopa_dyw,
 	 sppa_vsr, sppa_czas_do_wygas, sppa_zmien_op, sppa_zmien_op_wygasl, sppa_psr + pko_kor_psr
 FROM span_papiery,zlecenia,papier_korekta
-WHERE zlc_sppa_id=sppa_id AND sppa_id=pko_sppa_id;
+WHERE zlc_sppa_id=sppa_id AND sppa_id=pko_sppa_id
+AND sppa_klas_id=p_klas_id;
 
 DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = 1;
 
@@ -504,38 +507,39 @@ REPEAT
          v_kurs_instr, v_cena_instr_baz, v_stopa_proc, v_stopa_dyw,
          v_vsr, v_czas_do_wygas, v_zmien_op, v_zmien_op_wygas, v_psr;
 	   IF NOT v_done THEN
-	   IF v_typ_pap = 'FUT' THEN
-		   INSERT INTO depozyty_jedn_zmien(depz_sppa_id,depz_numer,depz_wartosc)
-			 SELECT v_id, id,( v_kurs_instr * v_mnoznik - ( v_kurs_instr * v_mnoznik * ( 1 + v_psr * u ) ) ) * w FROM stale;
+		   IF v_typ_pap = 'FUT' THEN
+			   INSERT INTO depozyty_jedn_zmien(depz_sppa_id,depz_numer,depz_wartosc)
+				 SELECT v_id, id,round(( v_kurs_wyk * v_mnoznik - ( v_kurs_wyk * v_mnoznik * ( 1 + v_psr * u ) ) ) * w,2) FROM stale;
+
+		   ELSE
+				IF v_zmien_op = -1 THEN
+				  SET v_zmien_op = v_zmien_op_wygas;
+				END IF;
+
+			   INSERT INTO depozyty_jedn_zmien(depz_sppa_id,depz_numer,depz_d1, depz_vol, depz_cb)
+			   SELECT v_id, id, (LN((v_cena_instr_baz * ( 1 + (v_psr * u)))/v_kurs_wyk) + ((v_stopa_proc - v_stopa_dyw +
+										POW(v_zmien_op + (v_vsr * v),2)/2) * v_czas_do_wygas)) / ((v_zmien_op + (v_vsr * v)) *
+										SQRT(v_czas_do_wygas) ), v_zmien_op + v_vsr * v,
+										 v_cena_instr_baz * ( 1 + v_psr * u )
+								   FROM stale;
+
+				UPDATE depozyty_jedn_zmien SET depz_d1 = (LN(depz_cb/v_kurs_wyk) + ((v_stopa_proc - v_stopa_dyw + POW(depz_vol,2)/2) * v_czas_do_wygas) ) / (depz_vol * sqrt(v_czas_do_wygas)) where depz_sppa_id=v_id;
+				UPDATE depozyty_jedn_zmien SET depz_d2 = depz_d1 - depz_vol * SQRT(v_czas_do_wygas) where depz_sppa_id=v_id;
+
+				IF v_rodzaj_opcji = 'C' THEN
+				  UPDATE depozyty_jedn_zmien SET depz_ct =
+									  v_mnoznik * ( depz_cb * EXP( -v_stopa_dyw * v_czas_do_wygas) * fnNormal( depz_d1 ) - v_kurs_wyk * EXP(-v_stopa_proc * v_czas_do_wygas) * fnNormal( depz_d2 ) )
+				  WHERE depz_sppa_id=v_id;
+				ELSE
+
+				  UPDATE depozyty_jedn_zmien SET depz_ct =
+									  v_mnoznik * ( ( v_kurs_wyk * EXP(-v_stopa_proc * v_czas_do_wygas) * fnNormal( -depz_d2 ) ) - (depz_cb * EXP( -v_stopa_dyw * v_czas_do_wygas) * fnNormal( -depz_d1 ) ) )
+					WHERE depz_sppa_id=v_id;
+				END IF;
+
+			   UPDATE depozyty_jedn_zmien,stale SET  depz_wartosc = ( v_kurs_instr * v_mnoznik - depz_ct ) * w where stale.id=depz_numer;
+
 		   END IF;
-	   ELSE
-	        IF v_zmien_op = -1 THEN
-			  SET v_zmien_op = v_zmien_op_wygas;
-			END IF;
-
-	       INSERT INTO depozyty_jedn_zmien(depz_sppa_id,depz_numer,depz_d1, depz_vol, depz_cb)
-		   SELECT v_id, id, (LN((v_cena_instr_baz * ( 1 + (v_psr * u)))/v_kurs_wyk) + ((v_stopa_proc - v_stopa_dyw +
-		                            POW(v_zmien_op + (v_vsr * v),2)/2) * v_czas_do_wygas)) / ((v_zmien_op + (v_vsr * v)) *
-									SQRT(v_czas_do_wygas) ), v_zmien_op + v_vsr * v,
-									 v_cena_instr_baz * ( 1 + v_psr * u )
-							   FROM stale;
-
-			UPDATE depozyty_jedn_zmien SET depz_d1 = (LN(depz_cb/v_kurs_wyk) + ((v_stopa_proc - v_stopa_dyw + POW(depz_vol,2)/2) * v_czas_do_wygas) ) / (depz_vol * sqrt(v_czas_do_wygas)) where depz_sppa_id=v_id;
-			UPDATE depozyty_jedn_zmien SET depz_d2 = depz_d1 - depz_vol * SQRT(v_czas_do_wygas) where depz_sppa_id=v_id;
-
-			IF v_rodzaj_opcji = 'C' THEN
-			  UPDATE depozyty_jedn_zmien SET depz_ct =
-                                  v_mnoznik * ( depz_cb * EXP( -v_stopa_dyw * v_czas_do_wygas) * fnNormal( depz_d1 ) - v_kurs_wyk * EXP(-v_stopa_proc * v_czas_do_wygas) * fnNormal( depz_d2 ) )
-			  WHERE depz_sppa_id=v_id;
-			ELSE
-
-			  UPDATE depozyty_jedn_zmien SET depz_ct =
-			                      v_mnoznik * ( ( v_kurs_wyk * EXP(-v_stopa_proc * v_czas_do_wygas) * fnNormal( -depz_d2 ) ) - (depz_cb * EXP( -v_stopa_dyw * v_czas_do_wygas) * fnNormal( -depz_d1 ) ) )
-			    WHERE depz_sppa_id=v_id;
-			END IF;
-
-		   UPDATE depozyty_jedn_zmien,stale SET  depz_wartosc = ( v_kurs_instr * v_mnoznik - depz_ct ) * w where stale.id=depz_numer;
-
 	   END IF;
 UNTIL v_done END REPEAT;
 CLOSE cs_papier;
@@ -550,7 +554,7 @@ begin
 DECLARE v_ret INT;
 DECLARE v_wynik DECIMAL(15,4) DEFAULT 0;
 START TRANSACTION;
-SELECT 'Wartosci do powrownania z plkiem RPJNE_ZRS.xml z dnia 20141031';
+SELECT 'Wartosci do porownania z plikem RPJNE_ZRS.xml z dnia 20141031';
 /* pierwszy test Zewn */
 call prCzysc();
 call prDodajPozycje('FW20Z1420',5,4.5);
@@ -569,7 +573,7 @@ call prDodajPozycje('F6MWZ14',6,4.5);
 call prOblDep;
 select @depozyt,':28864';
 
-/*3 test test opcji zewn*/
+/*trzeci test test opcji zewn*/
 call prCzysc();
 call prDodajPozycje('OW20L142600',10,4.5);
 call prDodajPozycje('OW20X142650',-6,4.5);
@@ -577,7 +581,7 @@ call prDodajPozycje('FW40H15',-8,4.5);
 call prOblDep;
 select @depozyt,':20707.30';
 
-/*3 test kontrakty spr wewn*/
+/*czwarty test kontrakty spr wewn*/
 call prCzysc();
 call prDodajPozycje('F3MWH15',8,4.5);
 call prDodajPozycje('F3MWJ15',-2,4.5);
@@ -587,18 +591,41 @@ call prDodajPozycje('F3MWM16',6,4.5);
 call prDodajPozycje('F3MWH16',-5,4.5);
 call prOblDep;
 select @depozyt,':17909';
-/*3 test kontrakty spr wewn W20*/
+/*piaty test kontrakty spr wewn W20*/
 call prCzysc();
 call prDodajPozycje('FW20Z1420',8,4.5);
 call prDodajPozycje('FW20U1520',-2,4.5);
 call prOblDep;
 select @depozyt,':24860';
-/*3 test opcje spr wewn W20*/
+/*szosty test opcje spr wewn W20*/
 call prCzysc();
 call prDodajPozycje('OW20O152900',-2,4.5);
 call prDodajPozycje('OW20F152000',8,4.5);
 call prOblDep;
 select @depozyt,':-10971.82';
+
+/*siodmy test sprawdzenie korekty Price Scan Rate Kontrakty*/
+call prCzysc();
+call prDodajPozycje('FW20Z1420',8,4.5);
+call prKorygujPSR('FW20Z1420',0);
+call prOblDep;
+select @depozyt,':29197';
+
+/*osmy test sprawdzenie korekty Price Scan Rate Kontrakty*/
+call prCzysc();
+call prDodajPozycje('FW20Z1420',8,4.5);
+call prKorygujPSR('FW20Z1420',-0.037);
+call prOblDep;
+select @depozyt,':14599';
+
+/*siodmy test sprawdzenie korekty Price Scan Rate Kontrakty*/
+
+call prCzysc();
+call prDodajPozycje('OW20O152900',-2,4.5);
+call prKorygujPSR('OW20O152900',0);
+call prOblDep;
+select @depozyt,':12079.86';
+
 commit;
 end;
 //

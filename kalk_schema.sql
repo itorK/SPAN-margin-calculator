@@ -108,7 +108,7 @@ CREATE INDEX idx_zlc_sppa ON zlecenia (zlc_sppa_id);
   CREATE TABLE papier_korekta
  ( pko_id INT(6)  NOT NULL AUTO_INCREMENT,
    pko_sppa_id INT,
-   pko_kor_psr decimal(10,2),
+   pko_kor_psr decimal(10,6),
    PRIMARY KEY (`pko_id`)
   );
 CREATE UNIQUE INDEX idx_pap_kor ON papier_korekta (pko_sppa_id);
