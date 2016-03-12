@@ -232,6 +232,179 @@ RETURN 1;
 end;
 
 //
+DROP PROCEDURE IF EXISTS prDodajPapier//
+CREATE PROCEDURE prDodajPapier(
+	v_sppa_nazwa VARCHAR(100),
+	v_nazwa_klasy VARCHAR(100),
+	v_data_wyg  VARCHAR(100),
+	v_kurs_instr  DECIMAL(15,4),
+	v_typ_papieru  VARCHAR(100),
+	v_czas_do_wygas  DECIMAL,
+	v_psr DECIMAL(15,4),
+	v_ryz_zmien  DECIMAL(15,4),
+	v_mnoznik  DECIMAL(15,4),
+	v_delta_ref  DECIMAL(15,4),
+	v_stopa_proc DECIMAL(15,4),
+	v_wsp_skal  DECIMAL(15,4),
+	v_cena_instr  DECIMAL(15,4),
+    v_scen1 DECIMAL(15,4),
+	v_scen2 DECIMAL(15,4),
+	v_scen3 DECIMAL(15,4),
+	v_scen4 DECIMAL(15,4),
+	v_scen5 DECIMAL(15,4),
+	v_scen6 DECIMAL(15,4),
+	v_scen7 DECIMAL(15,4),
+	v_scen8 DECIMAL(15,4),
+	v_scen9 DECIMAL(15,4),
+	v_scen10 DECIMAL(15,4),
+	v_scen11 DECIMAL(15,4),
+	v_scen12 DECIMAL(15,4),
+	v_scen13 DECIMAL(15,4),
+	v_scen14 DECIMAL(15,4),
+	v_scen15 DECIMAL(15,4),
+	v_scen16 DECIMAL(15,4),
+	v_kod_span VARCHAR(100))
+	begin
+	DECLARE v_ret INT DEFAULT 0;
+    call prDodajPapierO(	v_sppa_nazwa,
+	v_nazwa_klasy,
+	v_data_wyg,
+	v_kurs_instr,
+	v_typ_papieru,
+	v_czas_do_wygas,
+	v_psr,
+	v_ryz_zmien,
+	v_mnoznik,
+	v_delta_ref,
+	v_stopa_proc,
+	v_wsp_skal,
+	v_cena_instr,
+    v_scen1,
+	v_scen2,
+	v_scen3,
+	v_scen4,
+	v_scen5,
+	v_scen6,
+	v_scen7,
+	v_scen8,
+	v_scen9,
+	v_scen10,
+	v_scen11,
+	v_scen12,
+	v_scen13,
+	v_scen14,
+	v_scen15,
+	v_scen16,
+	v_kod_span,
+	null,
+	null,
+	null,
+	null,
+	null,
+	null);
+END;
+//
+
+DROP PROCEDURE IF EXISTS prDodajPapierO//
+CREATE PROCEDURE prDodajPapierO(	v_sppa_nazwa VARCHAR(100),
+	v_nazwa_klasy VARCHAR(100),
+	v_data_wyg  VARCHAR(100),
+	v_kurs_instr  DECIMAL,
+	v_typ_papieru  VARCHAR(100),
+	v_czas_do_wygas  DECIMAL(15,4),
+	v_psr DECIMAL(15,4),
+	v_ryz_zmien  DECIMAL(15,4),
+	v_mnoznik  DECIMAL(15,4),
+	v_delta_ref  DECIMAL(15,4),
+	v_stopa_proc DECIMAL(15,4),
+	v_wsp_skal  DECIMAL(15,4),
+	v_cena_instr  DECIMAL(15,4),
+    v_scen1 DECIMAL(15,4),
+	v_scen2 DECIMAL(15,4),
+	v_scen3 DECIMAL(15,4),
+	v_scen4 DECIMAL(15,4),
+	v_scen5 DECIMAL(15,4),
+	v_scen6 DECIMAL(15,4),
+	v_scen7 DECIMAL(15,4),
+	v_scen8 DECIMAL(15,4),
+	v_scen9 DECIMAL(15,4),
+	v_scen10 DECIMAL(15,4),
+	v_scen11 DECIMAL(15,4),
+	v_scen12 DECIMAL(15,4),
+	v_scen13 DECIMAL(15,4),
+	v_scen14 DECIMAL(15,4),
+	v_scen15 DECIMAL(15,4),
+	v_scen16 DECIMAL(15,4),
+	v_kod_span VARCHAR(100),
+	v_zmien_op_wygasl DECIMAL(15,4),
+	v_stopa_dyw DECIMAL(15,4),
+	v_kurs_wyk DECIMAL(15,4),
+	v_rodzaj_opcji VARCHAR(100),
+	v_zmien_op DECIMAL(15,4),
+    v_cena_baz DECIMAL(15,4))
+begin 
+DECLARE v_klas_id INT DEFAULT 0;
+DECLARE v_spid INT DEFAULT 0;
+INSERT IGNORE INTO klasy(klas_nazwa,klas_som,klas_nazwa_span) values ( v_nazwa_klasy, 0, v_kod_span);
+
+SELECT klas_id into v_klas_id FROM klasy WHERE klas_nazwa_span = v_kod_span limit 1;
+
+INSERT INTO span_papiery (sppa_nazwa,sppa_klas_id,sppa_data_wygas,sppa_kurs_wyk,sppa_typ_papieru,sppa_czas_do_wygas,sppa_psr,
+sppa_vsr,sppa_mnoznik,sppa_delta,sppa_stopa_proc,sppa_wsp_skal_delty,sppa_cena_instr,sppa_nr_poziomu) 
+values (v_sppa_nazwa,v_klas_id,v_data_wyg,v_kurs_instr,v_typ_papieru,v_czas_do_wygas,v_psr,v_ryz_zmien,v_mnoznik,v_delta_ref,
+v_stopa_proc, v_wsp_skal,v_cena_instr,99);
+
+SET v_spid = LAST_INSERT_ID();
+
+INSERT INTO depozyty_jedn (dep_wartosc,dep_numer,dep_sppa_id) values (v_scen1,1,v_spid);
+INSERT INTO depozyty_jedn (dep_wartosc,dep_numer,dep_sppa_id) values (v_scen2,2,v_spid);
+INSERT INTO depozyty_jedn (dep_wartosc,dep_numer,dep_sppa_id) values (v_scen3,3,v_spid);
+INSERT INTO depozyty_jedn (dep_wartosc,dep_numer,dep_sppa_id) values (v_scen4,4,v_spid);
+INSERT INTO depozyty_jedn (dep_wartosc,dep_numer,dep_sppa_id) values (v_scen5,5,v_spid);
+INSERT INTO depozyty_jedn (dep_wartosc,dep_numer,dep_sppa_id) values (v_scen6,6,v_spid);
+INSERT INTO depozyty_jedn (dep_wartosc,dep_numer,dep_sppa_id) values (v_scen7,7,v_spid);
+INSERT INTO depozyty_jedn (dep_wartosc,dep_numer,dep_sppa_id) values (v_scen8,8,v_spid);
+INSERT INTO depozyty_jedn (dep_wartosc,dep_numer,dep_sppa_id) values (v_scen9,9,v_spid);
+INSERT INTO depozyty_jedn (dep_wartosc,dep_numer,dep_sppa_id) values (v_scen10,10,v_spid);
+INSERT INTO depozyty_jedn (dep_wartosc,dep_numer,dep_sppa_id) values (v_scen11,11,v_spid);
+INSERT INTO depozyty_jedn (dep_wartosc,dep_numer,dep_sppa_id) values (v_scen12,12,v_spid);
+INSERT INTO depozyty_jedn (dep_wartosc,dep_numer,dep_sppa_id) values (v_scen13,13,v_spid);
+INSERT INTO depozyty_jedn (dep_wartosc,dep_numer,dep_sppa_id) values (v_scen14,14,v_spid);
+INSERT INTO depozyty_jedn (dep_wartosc,dep_numer,dep_sppa_id) values (v_scen15,15,v_spid);
+INSERT INTO depozyty_jedn (dep_wartosc,dep_numer,dep_sppa_id) values (v_scen16,16,v_spid);
+	 
+end;
+//
+
+DROP PROCEDURE IF EXISTS prDodajSpread//
+CREATE PROCEDURE prDodajSpread(
+    p_spks_typ VARCHAR(255),
+	p_spks_depozyt DECIMAL(10,4),
+	p_spks_priorytet INT,
+    p_nazwa_klasy VARCHAR(255),
+	p_spn_nr_poziomu INT,
+	p_spn_strona VARCHAR(255),
+	p_spn_liczba_delt DECIMAL(10,4))
+begin
+DECLARE v_klas_id INT DEFAULT 0;
+DECLARE v_spks_id INT DEFAULT 0;
+INSERT IGNORE INTO klasy(klas_nazwa,klas_som,klas_nazwa_span) values ( p_nazwa_klasy, 0, p_nazwa_klasy);
+
+SELECT klas_id into v_klas_id FROM klasy WHERE klas_nazwa_span = p_nazwa_klasy limit 1;
+
+	         INSERT IGNORE INTO span_klasy_spready (spks_typ,spks_depozyt,spks_priorytet )
+			 VALUES (p_spks_typ, p_spks_depozyt,p_spks_priorytet);
+
+			 SELECT spks_id INTO v_spks_id FROM span_klasy_spready WHERE
+			 spks_typ=p_spks_typ and spks_depozyt=p_spks_depozyt and spks_priorytet=p_spks_priorytet limit 1;
+			 
+			 
+			 	        INSERT INTO spready_nogi(spn_spks_id , spn_klas_id, spn_nr_poziomu,spn_strona,spn_liczba_delt)
+						VALUES ( v_spks_id, v_klas_id,p_spn_nr_poziomu, p_spn_strona, p_spn_liczba_delt);
+						
+						
+end;
+//
 
 DROP FUNCTION IF EXISTS fnImportujOpcje//
 CREATE FUNCTION fnImportujOpcje()
@@ -390,4 +563,15 @@ commit;
 end;
 //
 
+DROP PROCEDURE IF EXISTS prCzyscImp//
+CREATE PROCEDURE prCzyscImp()
+begin
+truncate table span_klasy_spready;
+truncate table spready_nogi;
+truncate table klasy;
+truncate table span_papiery;
+truncate table depozyty_jedn;
+
+end;
+//
 delimiter ;

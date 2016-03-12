@@ -180,6 +180,7 @@ REPEAT
 			IF v_depozyt_wew < 0 THEN
 			  SET v_depozyt_wew = 0;
 			END IF;
+			SELECT v_depozyt_wew, v_delta;
 			UPDATE priorytety SET prior_depozyt = v_depozyt_wew WHERE prior_nr = v_priorytet;
 		  END IF;
 		  UPDATE klasy_wewn SET tkwew_strona_wartosc = v_tkwew_strona_wartosc,
@@ -324,7 +325,6 @@ SET v_done = 0;
 
 				select sum(sobr_ryzyko)/2 INTO v_TR1 FROM span_obl_risk WHERE sobr_sob_id = v_sob_id and sobr_scen in (1,2);
 				select sum(sobr_ryzyko)/2 INTO v_TR2 FROM span_obl_risk WHERE sobr_sob_id = v_sob_id2 and sobr_scen in (1,2);
-
 				SET v_RZC1 = v_SCRV1 - v_TR1;
 				SET v_RZC2 = v_SCRV2 - v_TR2;
 				SET v_JRZC1 = v_RZC1/ABS(v_dd_org);
@@ -424,8 +424,7 @@ select sppa_id,p_psr FROM span_papiery WHERE sppa_nazwa = p_kod_papieru
 ON DUPLICATE KEY UPDATE pko_kor_psr = p_psr;
 
 end;
-
-/*http://stackoverflow.com/questions/7447724/calculating-a-norm-distribution-in-mysql */
+//
 DROP FUNCTION IF EXISTS fnNormal//
 CREATE FUNCTION fnNormal(p_wartosc DECIMAL(10,5))
 RETURNS DECIMAL(10,5)
@@ -455,7 +454,7 @@ DECLARE v_normal,v_a1,v_a2,v_a3,v_a4,v_a5,v_k  DECIMAL(10,5) DEFAULT 0;
   END IF;
   RETURN v_normal;
  end;
-
+//
 DROP PROCEDURE IF EXISTS prWyliczScenJedn//
 CREATE PROCEDURE prWyliczScenJedn(p_klas_id INT)
 begin
@@ -654,17 +653,6 @@ truncate table zlecenia;
 end;
 //
 
-DROP FUNCTION IF EXISTS fnMax//
-CREATE FUNCTION fnMax(p_1 DECIMAL(15,4),p_2 DECIMAL(15,4))
-RETURNS DECIMAL(15,4)
-begin
-IF (p_1 > p_2) THEN
-	RETURN p_1;
-ELSE
-	RETURN p_2;
-END IF;
-end;
-//
 DROP PROCEDURE IF EXISTS prOblDep//
 CREATE PROCEDURE prOblDep()
 begin
@@ -769,8 +757,8 @@ call  prPNO();
 call  prPO();
 call  prMDKO();
 SET   @pno = @suma_pno;
-select fnMax(fnMax(round(@suma_ryzyk) + round(@suma_swew),@suma_mdko) - round(@szew) - @suma_pno,0),@suma_po*-1 INTO @DPNO,@premia;
-select fnMax(@suma_pno - fnMax(round(@suma_ryzyk) + round(@suma_swew),@suma_mdko) - round(@szew),0) INTO @NOD;
+select GREATEST(GREATEST(round(@suma_ryzyk) + round(@suma_swew),@suma_mdko) - round(@szew) - @suma_pno,0),@suma_po*-1 INTO @DPNO,@premia;
+select GREATEST(@suma_pno - GREATEST(round(@suma_ryzyk) + round(@suma_swew),@suma_mdko) - round(@szew),0) INTO @NOD;
 SELECT @DPNO - @NOD INTO @depozyt;
 commit;
 end;
